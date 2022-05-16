@@ -30,5 +30,5 @@ func convertConditionCode(code string) (string, error) {
 	if val, ok := conditions[key]; ok {
 		return val, nil
 	}
-	return "", fmt.Errorf("not valid condition code")
+	return "", fmt.Errorf("%s not valid condition code", code)
 }

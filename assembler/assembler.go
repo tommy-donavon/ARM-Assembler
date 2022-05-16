@@ -29,15 +29,20 @@ type (
 		isImmediate         bool
 		offset              string
 		store               bool
-	}
-	branchInstruction struct {
-		conditionCode string
-		offset        string
+		writeBack           bool
 	}
 )
 
-func newMOVInstruction(conditionCode, destinationRegister, immediateValue string, isMOVW bool) (*movInstruction, error) {
-	immValueBin, err := convertHexTo16BitBinary(immediateValue)
+func newMOVInstruction(instruction string, isMOVW bool) (*movInstruction, error) {
+	conditionCode := checkForCondition(instruction)
+	registers := checkForRegisters(instruction)
+	immValue := checkForImmediateValue(instruction)
+
+	if conditionCode == "" || len(registers) != 1 || immValue == "" {
+		return nil, fmt.Errorf("%s is an invalid MOV(T/W) operation", instruction)
+	}
+
+	immValueBin, err := convertHexTo16BitBinary(immValue)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +50,7 @@ func newMOVInstruction(conditionCode, destinationRegister, immediateValue string
 	if err != nil {
 		return nil, err
 	}
-	destRegBin, err := convertRegisters(destinationRegister)
+	destRegBin, err := convertRegisters(registers[0])
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +62,18 @@ func newMOVInstruction(conditionCode, destinationRegister, immediateValue string
 	}, nil
 }
 
-func newStoreInstruction(conditionCode, destinationRegister, baseRegister, offset string, isImmediate, isStore bool) (*storeInstruction, error) {
+func newStoreInstruction(instruction string, isImmediate, isStore bool) (*storeInstruction, error) {
+	offset := checkForImmediateValue(instruction)
+	if offset == "" {
+		offset = "0x0"
+	}
+	conditionCode := checkForCondition(instruction)
+	registers := checkForRegisters(instruction)
+	writeBack := checkForWriteBack(instruction)
+	if len(registers) != 2 {
+		return nil, fmt.Errorf("%s is not a valid Load/Store command", instruction)
+	}
+
 	offsetBin, err := convertHexTo12BitBinary(offset)
 	if err != nil {
 		return nil, err
@@ -66,11 +82,11 @@ func newStoreInstruction(conditionCode, destinationRegister, baseRegister, offse
 	if err != nil {
 		return nil, err
 	}
-	destRegBin, err := convertRegisters(destinationRegister)
+	destRegBin, err := convertRegisters(registers[0])
 	if err != nil {
 		return nil, err
 	}
-	baseRegBin, err := convertRegisters(baseRegister)
+	baseRegBin, err := convertRegisters(registers[1])
 	if err != nil {
 		return nil, err
 	}
@@ -82,39 +98,72 @@ func newStoreInstruction(conditionCode, destinationRegister, baseRegister, offse
 		isImmediate:         isImmediate,
 		offset:              offsetBin,
 		store:               isStore,
+		writeBack:           writeBack,
 	}, nil
 }
 
-func newBranchInstruction(conditionCode, offset string) (*branchInstruction, error) {
-	codCodeBin, err := convertConditionCode(conditionCode)
-	if err != nil {
-		return nil, err
-	}
-	offsetBin, err := convertHexTo24BitBinary(offset)
-	if err != nil {
-		return nil, err
-	}
-	return &branchInstruction{
-		conditionCode: codCodeBin,
-		offset:        offsetBin,
-	}, nil
-}
+func newOperationInstruction(opcode, instruction string) (*operationInstruction, error) {
+	registers := checkForRegisters(instruction)
+	conditionCode := checkForCondition(instruction)
+	sBit := checkForSBit(instruction)
+	immValue := checkForImmediateValue(instruction)
+	iBit := false
 
-func (b *branchInstruction) toString() string {
-	instruction := fmt.Sprintf("%s1010%s", b.conditionCode, b.offset)
-	return insertSpaceNth(instruction, 4)
+	destinationReg, err := convertRegisters(registers[0])
+	if err != nil {
+		return nil, err
+	}
+	rnRegester, err := convertRegisters(registers[1])
+	if err != nil {
+		return nil, err
+	}
+	condCode, err := convertConditionCode(conditionCode)
+	if err != nil {
+		return nil, err
+	}
+	if immValue == "" && len(registers) == 3 {
+		immValue = registers[2]
+		immValue, err = convertRegisters(immValue)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		iBit = true
+		immValue, err = convertHexTo12BitBinary(immValue)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return &operationInstruction{
+		conditionCode:       condCode,
+		iBit:                iBit,
+		operationCode:       opcode,
+		sBit:                sBit,
+		operandRegister:     rnRegester,
+		destinationRegister: destinationReg,
+		operandTwo:          immValue,
+	}, nil
 }
 
 func (s *storeInstruction) toString() string {
 	iBit := "1"
 	lBit := "1"
+	pBit := "1"
+	uBit := "0"
+	wBit := "0"
 	if s.isImmediate {
 		iBit = "0"
 	}
 	if s.store {
 		lBit = "0"
+		uBit = "1"
+		pBit = "0"
 	}
-	instruction := fmt.Sprintf("%s01%s1100%s%s%s%s", s.conditionCode, iBit, lBit, s.baseRegister, s.destinationRegister, s.offset)
+	if s.writeBack {
+		wBit = "1"
+	}
+
+	instruction := fmt.Sprintf("%s01%s%s%s0%s%s%s%s%s", s.conditionCode, iBit, pBit, uBit, wBit, lBit, s.baseRegister, s.destinationRegister, s.offset)
 	return insertSpaceNth(instruction, 4)
 }
 
