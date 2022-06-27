@@ -28,12 +28,13 @@ var (
 
 func (arm *Assembler) BuildInstruction(armInstructions []string) (string, error) {
 	binInstructions := []string{}
+	fmt.Println("reg")
 	for i, instruction := range armInstructions {
+		fmt.Println(instruction)
 		if instruction != "" && instruction[0] != '#' {
 			if instruction[0] == ':' {
 				s := strings.Split(instruction, " ")
 				instruction = strings.ReplaceAll(instruction, s[0]+" ", "")
-				fmt.Println(instruction)
 			}
 			segments := strings.Split(instruction, " ")
 			switch segments[0] {
@@ -117,6 +118,10 @@ func (arm *Assembler) BuildInstruction(armInstructions []string) (string, error)
 			return "", err
 		}
 		hexCodes = append(hexCodes, hex)
+	}
+	fmt.Println("Hex")
+	for _, val := range hexCodes {
+		fmt.Println(val)
 	}
 	return strings.Join(hexCodes, ""), nil
 }

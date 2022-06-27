@@ -13,7 +13,11 @@ import (
 
 func main() {
 	assembler := &asm.Assembler{}
-	file, err := os.Open("blink-2.txt")
+	args := os.Args[1:]
+	if len(args) != 1 {
+		log.Fatal("invalid number of arguments")
+	}
+	file, err := os.Open(args[0])
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -26,7 +30,10 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	lines := strings.Split(string(b), "\r\n")
+	lines := strings.Split(string(b), "\n")
+	for _, l := range lines {
+		fmt.Println(l)
+	}
 	nhex, err := assembler.BuildInstruction(lines)
 	if err != nil {
 		fmt.Println(err.Error())

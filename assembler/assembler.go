@@ -30,6 +30,7 @@ type (
 		offset              string
 		store               bool
 		writeBack           bool
+		meta                string
 	}
 )
 
@@ -70,6 +71,7 @@ func newStoreInstruction(instruction string, isImmediate, isStore bool) (*storeI
 	conditionCode := checkForCondition(instruction)
 	registers := checkForRegisters(instruction)
 	writeBack := checkForWriteBack(instruction)
+	meta := checkForMetaStore(instruction)
 	if len(registers) != 2 {
 		return nil, fmt.Errorf("%s is not a valid Load/Store command", instruction)
 	}
@@ -99,6 +101,7 @@ func newStoreInstruction(instruction string, isImmediate, isStore bool) (*storeI
 		offset:              offsetBin,
 		store:               isStore,
 		writeBack:           writeBack,
+		meta:                meta,
 	}, nil
 }
 
@@ -156,9 +159,10 @@ func (s *storeInstruction) toString() string {
 	}
 	if s.store {
 		lBit = "0"
-		uBit = "1"
 		pBit = "0"
+		uBit = "1"
 	}
+
 	if s.writeBack {
 		wBit = "1"
 	}

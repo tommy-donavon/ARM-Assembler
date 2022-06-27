@@ -87,6 +87,15 @@ func checkForRegisters(s string) []string {
 	return outRegisters
 }
 
+func checkForMetaStore(s string) string {
+	re := regexp.MustCompile("^.*[(](UW|PW|PU)[)].*$")
+	match := re.FindStringSubmatch(s)
+	if len(match) > 1 {
+		return match[1]
+	}
+	return ""
+}
+
 func checkForImmediateValue(s string) string {
 	re := regexp.MustCompile("(0x[A-Fa-f0-9]+)")
 	match := re.FindStringSubmatch(s)
@@ -112,7 +121,7 @@ func checkForSBit(s string) bool {
 }
 
 func checkForWriteBack(s string) bool {
-	re := regexp.MustCompile("^.*R[0-9]+(!).*$")
+	re := regexp.MustCompile("^.*[(](EA|FD|FA)[)].*$")
 	match := re.FindStringSubmatch(s)
 	return len(match) > 1
 }
